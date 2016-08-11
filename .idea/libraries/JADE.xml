@@ -1,0 +1,16 @@
+<component name="libraryTable">
+  <library name="JADE">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/lib/jade.jar!/" />
+      <root url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/lib/commons-codec" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/doc/api" />
+      <root url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/doc/tools/sniffer/html/jdoc" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/src" />
+    </SOURCES>
+    <jarDirectory url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/lib/commons-codec" recursive="false" />
+  </library>
+</component>
