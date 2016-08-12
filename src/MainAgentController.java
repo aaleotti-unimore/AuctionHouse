@@ -10,7 +10,7 @@ public class MainAgentController {
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
-    private static AgentController controller;
+    private static AgentController controller,controller2;
 
     protected MainAgentController() throws ControllerException {
 
@@ -34,12 +34,17 @@ public class MainAgentController {
         rt = Runtime.instance();
 
         Profile profile = new ProfileImpl();
-        mainContainer = rt.createMainContainer(profile);
-        Object[] args = new Object[1];
-        args[0] = new Object();
+        profile.setParameter("gui", "true");
 
-        controller = mainContainer.createNewAgent("inProcess", "jade.tools.DummyAgent.DummyAgent", args);
+        mainContainer = rt.createMainContainer(profile);
+        Object[] args = new String[1];
+        args[0] = "Rendevouz with Rama";
+
+        controller2 = mainContainer.createNewAgent("seller", "BookSellerAgent", args);
+        controller = mainContainer.createNewAgent("buyer", "BookBuyerAgent", args);
         controller.start();
+        controller2.start();
+
     }
 
     public static MainAgentController getInstance() throws ControllerException {
@@ -52,6 +57,7 @@ public class MainAgentController {
 
     public static void killInstance() throws StaleProxyException {
         controller.kill();
+        controller2.kill();
         mainContainer.kill();
         rt.shutDown();
         instance = null;

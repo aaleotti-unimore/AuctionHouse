@@ -11,9 +11,6 @@ public class Main {
     public static void main(String[] args) throws ControllerException, InterruptedException {
 
         MainAgentController ac = MainAgentController.getInstance();
-        Thread.sleep(5000);
-        ac.killInstance();
-        System.exit(0);
     }
 }
 
