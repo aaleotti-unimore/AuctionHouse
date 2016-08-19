@@ -1,6 +1,6 @@
 import jade.core.Profile;
-import jade.core.Runtime;
 import jade.core.ProfileImpl;
+import jade.core.Runtime;
 import jade.wrapper.AgentController;
 import jade.wrapper.ControllerException;
 import jade.wrapper.StaleProxyException;
@@ -10,7 +10,7 @@ public class MainAgentController {
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
-    private static AgentController controller,controller2;
+    private static AgentController controller, controller2;
 
     protected MainAgentController() throws ControllerException {
 
@@ -37,13 +37,20 @@ public class MainAgentController {
         profile.setParameter("gui", "true");
 
         mainContainer = rt.createMainContainer(profile);
-        Object[] args = new String[1];
-        args[0] = "Rendevouz with Rama";
+        Object[] args = new String[2];
+        args[0] = "Fender Stratocaster 1966";
+        args[1] = "1500";
 
-        controller2 = mainContainer.createNewAgent("seller", "BookSellerAgent", args);
-        controller = mainContainer.createNewAgent("buyer", "BookBuyerAgent", args);
-        controller.start();
-        controller2.start();
+        controller2 = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", args);
+        AgentController[] controllers = new AgentController[10];
+        for (int i = 0; i < controllers.length; i++) {
+            controllers[i] = mainContainer.createNewAgent("bidder" + i, "BidderAgent", args);
+        }
+
+        for (AgentController cnt : controllers) {
+            cnt.start();
+        }
+
 
     }
 
@@ -66,25 +73,25 @@ public class MainAgentController {
 
 /**
  * >         // This is the important method. This launches the jade platform.
- >         Runtime rt = Runtime.instance();
- >
- >         Profile profile = new ProfileImpl();
- >
- >         // With the Profile you can set some options for the container
- >         profile.setParameter(Profile.PLATFORM_ID, "Platform Name");
- >         profile.setParameter(Profile.CONTAINER_NAME, "Container Name");
- >
- >         // Create the Main Container
- >         AgentContainer mainContainer = rt.createMainContainer(profile);
- >
- >         try {
- >                 // Here I create an agent in the main container and start
- > it.
- >             AgentController ac = mainContainer.createNewAgent("manager",
- >                     "ia.main.AgentManager", params);
- >             ac.start();
- >         } catch(StaleProxyException e) {
- >             e.printStackTrace();
- >         }
- >     }
+ * >         Runtime rt = Runtime.instance();
+ * >
+ * >         Profile profile = new ProfileImpl();
+ * >
+ * >         // With the Profile you can set some options for the container
+ * >         profile.setParameter(Profile.PLATFORM_ID, "Platform Name");
+ * >         profile.setParameter(Profile.CONTAINER_NAME, "Container Name");
+ * >
+ * >         // Create the Main Container
+ * >         AgentContainer mainContainer = rt.createMainContainer(profile);
+ * >
+ * >         try {
+ * >                 // Here I create an agent in the main container and start
+ * > it.
+ * >             AgentController ac = mainContainer.createNewAgent("manager",
+ * >                     "ia.main.AgentManager", params);
+ * >             ac.start();
+ * >         } catch(StaleProxyException e) {
+ * >             e.printStackTrace();
+ * >         }
+ * >     }
  */

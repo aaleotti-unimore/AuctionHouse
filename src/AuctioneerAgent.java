@@ -9,15 +9,22 @@ import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+//@SuppressWarnings({ "unchecked", "rawtypes" })
 public class AuctioneerAgent extends Agent {
     // The title and price of the item to sell
     private String itemName;
     private Integer itemStartingPrice;
 
     // The list of known seller agents
-    private AID[] bidderAgents;
+    private List<AID> participantAgents;
 
-    // Put agent initializations here
+    /**
+     * agent initializations
+     */
     protected void setup() {
         // Printout a welcome message
         System.out.println(" Auctioneer " + getAID().getName() + " is ready.");
@@ -41,10 +48,10 @@ public class AuctioneerAgent extends Agent {
                     try {
                         DFAgentDescription[] result = DFService.search(myAgent, template);
                         System.out.println("Found the following bidders:");
-                        bidderAgents = new AID[result.length];
-                        for (int i = 0; i < result.length; ++i) {
-                            bidderAgents[i] = result[i].getName();
-                            System.out.println(bidderAgents[i].getName());
+                        participantAgents = new ArrayList<>(result.length);
+                        for (DFAgentDescription res : result) {
+                            participantAgents.add(res.getName());
+                            System.out.println("* " + res.getName());
                         }
                     } catch (FIPAException fe) {
                         fe.printStackTrace();
@@ -59,6 +66,7 @@ public class AuctioneerAgent extends Agent {
             System.out.println("Bad Arguments");
             doDelete();
         }
+
     }
 
     // Put agent clean-up operations here
@@ -70,96 +78,122 @@ public class AuctioneerAgent extends Agent {
     /**
      * Inner class RequestPerformer.
      * This is the behaviour used by Book-buyer agents to request seller
-     * agents the target book.
+     * agents the target item.
      */
     private class RequestPerformer extends Behaviour {
-        private AID bestSeller; // The agent who provides the best offer
-        private int bestPrice;  // The best offered price
-        private int repliesCnt = 0; // The counter of replies from seller agents
+        private AID bestBidder; // The agent who provides the best offer
         private MessageTemplate mt; // The template to receive replies
         private int step = 0;
-        private String ConversationID = "Auction-for-" + itemName;
+        private String ConversationID = "Auction-for-" + itemName + System.currentTimeMillis();
+        private ACLMessage cfp;
+        private int currentItemPrice = itemStartingPrice;
+        private List<AID> proposingAgents = new ArrayList<>();
 
         public void action() {
             switch (step) {
                 case 0:
-                    // Send the cfp to all bidders
-                    ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-                    for (int i = 0; i < bidderAgents.length; ++i) {
-                        cfp.addReceiver(bidderAgents[i]);
+                    // send Inform to all participants
+
+                    ACLMessage inform = new ACLMessage(ACLMessage.INFORM);
+                    for (AID participant : participantAgents) {
+                        inform.addReceiver(participant);
                     }
-                    cfp.setContent(String.valueOf(itemStartingPrice));
-                    cfp.setConversationId("auction");
-                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
+                    inform.setContent(ConversationID);
+                    inform.setConversationId(ConversationID);
+                    myAgent.send(inform);
+                    proposingAgents = participantAgents;
+                    step = 1;
+                    break;
+                case 1:
+                    // Send cfp to all participants
+                    System.out.println(myAgent.getName() + " call for " + itemName + "at price: " + currentItemPrice);
+                    cfp = new ACLMessage(ACLMessage.CFP);
+                    for (AID bidder : proposingAgents) {
+                        cfp.addReceiver(bidder);
+                    }
+                    cfp.setContent(String.valueOf(currentItemPrice));
+                    cfp.setConversationId(ConversationID);
+                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value given he multiple CFP ongoing
+                    cfp.setReplyByDate(new Date(System.currentTimeMillis() + 2000));
                     myAgent.send(cfp);
                     // Prepare the template to get proposals
                     mt = MessageTemplate.and(MessageTemplate.MatchConversationId(ConversationID),
                             MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-                    step = 1;
-                    break;
-                case 1:
-                    // Receive all proposals/refusals from seller agents
-                    ACLMessage reply = myAgent.receive(mt);
-                    if (reply != null) {
-                        // Reply received
-                        if (reply.getPerformative() == ACLMessage.PROPOSE) {
-                            // This is an offer
-                            int price = Integer.parseInt(reply.getContent());
-                            if (bestSeller == null || price < bestPrice) {
-                                // This is the best offer at present
-                                bestPrice = price;
-                                bestSeller = reply.getSender();
-                            }
-                        }
-                        repliesCnt++;
-                        if (repliesCnt >= bidderAgents.length) {
-                            // We received all replies
-                            step = 2;
-                        }
-                    } else {
-                        block();
-                    }
+                    step = 2;
                     break;
                 case 2:
-                    // Send the purchase order to the seller that provided the best offer
-                    ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-                    order.addReceiver(bestSeller);
-                    order.setContent(itemName);
-                    order.setConversationId(ConversationID);
-                    order.setReplyWith("order" + System.currentTimeMillis());
-                    myAgent.send(order);
-                    // Prepare the template to get the purchase order reply
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId(ConversationID),
-                            MessageTemplate.MatchInReplyTo(order.getReplyWith()));
-                    step = 3;
-                    break;
-                case 3:
-                    // Receive the purchase order reply
-                    reply = myAgent.receive(mt);
-                    if (reply != null) {
-                        // Purchase order reply received
-                        if (reply.getPerformative() == ACLMessage.INFORM) {
-                            // Purchase successful. We can terminate
-                            System.out.println(itemName + " successfully purchased from agent " + reply.getSender().getName());
-                            System.out.println("Price = " + bestPrice);
-                            myAgent.doDelete();
-                        } else {
-                            System.out.println("Attempt failed: requested book already sold.");
-                        }
+                    // Receive all proposals/not-understood from the participants
 
-                        step = 4;
+                    ACLMessage reply = myAgent.receive(mt);
+                    if (reply != null) {
+                        // Reply received fill array with current bidders
+                        if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                            proposingAgents.add(reply.getSender());
+                            System.out.println(reply.getSender().getName() + " proposes");
+                        }
+                        if (reply.getPerformative() == ACLMessage.NOT_UNDERSTOOD) {
+                            System.out.println(reply.getSender().getName() + " didn't understand");
+                        }
                     } else {
                         block();
                     }
+                    //wait until timeout
+                    if (new Date(System.currentTimeMillis()).after(cfp.getReplyByDate()))
+                        if (proposingAgents.size() > 0) {
+                            // We received at least one proposal
+                            step = 3;
+                        } else {
+                            //no new proposals
+                            step = 4;
+                        }
+                    break;
+                case 3:
+                    bestBidder = proposingAgents.get(0);
+
+                    // Send the accept-proposal to the first proposing agent
+                    ACLMessage acceptBidderProposal = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                    acceptBidderProposal.addReceiver(proposingAgents.get(0));
+                    acceptBidderProposal.setConversationId(ConversationID);
+                    myAgent.send(acceptBidderProposal);
+                    System.out.println(proposingAgents.get(0).getName() + " is the current best bidder");
+
+                    ACLMessage rejectProposals = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
+                    for (AID agent : proposingAgents)
+                        if (proposingAgents.indexOf(agent) > 0)
+                            rejectProposals.addReceiver(agent);
+
+                    rejectProposals.setConversationId(ConversationID);
+                    myAgent.send(rejectProposals);
+
+                    //clear the list, increase the price and restart from the cfp
+                    proposingAgents = null;
+                    proposingAgents = new ArrayList<>();
+                    currentItemPrice += 10;
+                    step = 1;
+                    break;
+                case 4:
+                    //inform everyone and request the winner
+                    ACLMessage inform2 = new ACLMessage(ACLMessage.INFORM);
+                    inform2.setContent("Auction won by " + bestBidder.getName());
+                    System.out.println("Auction won by " + bestBidder.getName());
+                    for (AID participant : participantAgents)
+                        inform2.addReceiver(participant);
+                    myAgent.send(inform2);
+
+                    //request the winner to pay
+                    ACLMessage requestWinner = new ACLMessage(ACLMessage.REQUEST);
+                    requestWinner.setContent(Integer.toString(currentItemPrice));
+                    requestWinner.addReceiver(bestBidder);
+                    myAgent.send(requestWinner);
                     break;
             }
         }
 
         public boolean done() {
-            if (step == 2 && bestSeller == null) {
+            if (step == 2 && bestBidder == null) {
                 System.out.println("Attempt failed: " + itemName + " not available for sale");
             }
-            return ((step == 2 && bestSeller == null) || step == 4);
+            return ((step == 2 && bestBidder == null) || step == 4);
         }
     }  // End of inner class RequestPerformer
 }
