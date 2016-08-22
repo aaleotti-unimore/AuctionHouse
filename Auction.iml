@@ -7,6 +7,22 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="JADE" level="project" />
+    <orderEntry type="module-library">
+      <library name="JADE">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib/jade.jar!/" />
+          <root url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/lib/commons-codec" />
+          <root url="jar://$MODULE_DIR$/lib/jade.jar!/" />
+        </CLASSES>
+        <JAVADOC>
+          <root url="file://$MODULE_DIR$/lib/api" />
+          <root url="file://$MODULE_DIR$/lib/jdoc" />
+        </JAVADOC>
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/lib/src" />
+        </SOURCES>
+        <jarDirectory url="file://$USER_HOME$/Desktop/JADE/JADE-all-4.4.0/jade/lib/commons-codec" recursive="false" />
+      </library>
+    </orderEntry>
   </component>
 </module>

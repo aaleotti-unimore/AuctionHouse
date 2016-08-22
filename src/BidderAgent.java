@@ -8,12 +8,9 @@ import jade.lang.acl.ACLMessage;
 
 import java.util.Random;
 
-/**
- * Created by Alessandro on 11/08/2016.
- */
 public class BidderAgent extends Agent {
-    int myCash;
-    Boolean terminated = false;
+    private int myCash;
+    private Boolean terminated = false;
 
     @Override
     protected void setup() {
@@ -38,8 +35,7 @@ public class BidderAgent extends Agent {
     }
 
     public boolean done() {
-        if (terminated) return true;
-        else return false;
+        return terminated;
     }
 
 

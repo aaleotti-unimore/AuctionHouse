@@ -36,7 +36,7 @@ public class MainAgentController {
         rt = Runtime.instance();
 
         Profile profile = new ProfileImpl();
-        profile.setParameter("gui", "true");
+//        profile.setParameter("gui", "true");
 
         mainContainer = rt.createMainContainer(profile);
         Object[] args = new String[2];
