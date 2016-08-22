@@ -43,7 +43,7 @@ public class BookSellerAgent extends Agent {
 		// Create the catalogue
 		catalogue = new Hashtable();
 
-		// Create and show the GUI 
+		// Create and show the GUI
 		myGui = new BookSellerGui(this);
 		myGui.showGui();
 

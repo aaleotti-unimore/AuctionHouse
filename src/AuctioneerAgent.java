@@ -10,7 +10,6 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 //@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -18,6 +17,7 @@ public class AuctioneerAgent extends Agent {
     // The title and price of the item to sell
     private String itemName;
     private Integer itemStartingPrice;
+    private Boolean terminated = false;
 
     // The list of known seller agents
     private List<AID> participantAgents;
@@ -33,7 +33,7 @@ public class AuctioneerAgent extends Agent {
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
             itemName = (String) args[0];
-            itemStartingPrice = (Integer) args[1];
+            itemStartingPrice = Integer.valueOf((String) args[1]);
             System.out.println("Target item is " + itemName + " and the starting price is " + itemStartingPrice);
 
             addBehaviour(new OneShotBehaviour(this) {
@@ -51,7 +51,12 @@ public class AuctioneerAgent extends Agent {
                         participantAgents = new ArrayList<>(result.length);
                         for (DFAgentDescription res : result) {
                             participantAgents.add(res.getName());
-                            System.out.println("* " + res.getName());
+                            System.out.println("* " + res.getName().getLocalName());
+                        }
+                        if (result.length == 0) {
+                            System.out.println("found no bidders. exiting");
+                            terminated = true;
+                            doDelete();
                         }
                     } catch (FIPAException fe) {
                         fe.printStackTrace();
@@ -69,6 +74,11 @@ public class AuctioneerAgent extends Agent {
 
     }
 
+    public boolean done() {
+        if (terminated) return true;
+        else return false;
+    }
+
     // Put agent clean-up operations here
     protected void takeDown() {
         // Printout a dismissal message
@@ -84,7 +94,7 @@ public class AuctioneerAgent extends Agent {
         private AID bestBidder; // The agent who provides the best offer
         private MessageTemplate mt; // The template to receive replies
         private int step = 0;
-        private String ConversationID = "Auction-for-" + itemName + System.currentTimeMillis();
+        private String conversationID = "Auction-for-" + itemName + System.currentTimeMillis();
         private ACLMessage cfp;
         private int currentItemPrice = itemStartingPrice;
         private List<AID> proposingAgents = new ArrayList<>();
@@ -98,8 +108,8 @@ public class AuctioneerAgent extends Agent {
                     for (AID participant : participantAgents) {
                         inform.addReceiver(participant);
                     }
-                    inform.setContent(ConversationID);
-                    inform.setConversationId(ConversationID);
+                    inform.setContent(conversationID);
+                    inform.setConversationId(conversationID);
                     myAgent.send(inform);
                     proposingAgents = participantAgents;
                     step = 1;
@@ -112,19 +122,19 @@ public class AuctioneerAgent extends Agent {
                         cfp.addReceiver(bidder);
                     }
                     cfp.setContent(String.valueOf(currentItemPrice));
-                    cfp.setConversationId(ConversationID);
+                    cfp.setConversationId(conversationID);
                     cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value given he multiple CFP ongoing
-                    cfp.setReplyByDate(new Date(System.currentTimeMillis() + 2000));
+//                    cfp.setReplyByDate(new Date(System.currentTimeMillis() + 2000));
                     myAgent.send(cfp);
                     // Prepare the template to get proposals
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId(ConversationID),
+                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId(conversationID),
                             MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-                    step = 2;
-                    break;
-                case 2:
+//                    step = 2;
+//                    break;
+//                case 2:
                     // Receive all proposals/not-understood from the participants
 
-                    ACLMessage reply = myAgent.receive(mt);
+                    ACLMessage reply = myAgent.receive();
                     if (reply != null) {
                         // Reply received fill array with current bidders
                         if (reply.getPerformative() == ACLMessage.PROPOSE) {
@@ -138,14 +148,14 @@ public class AuctioneerAgent extends Agent {
                         block();
                     }
                     //wait until timeout
-                    if (new Date(System.currentTimeMillis()).after(cfp.getReplyByDate()))
-                        if (proposingAgents.size() > 0) {
-                            // We received at least one proposal
-                            step = 3;
-                        } else {
-                            //no new proposals
-                            step = 4;
-                        }
+//                    if (new Date(System.currentTimeMillis()).after(cfp.getReplyByDate()))
+                    if (proposingAgents.size() > 0) {
+                        // We received at least one proposal
+                        step = 3;
+                    } else {
+                        //no new proposals
+                        step = 4;
+                    }
                     break;
                 case 3:
                     bestBidder = proposingAgents.get(0);
@@ -153,7 +163,7 @@ public class AuctioneerAgent extends Agent {
                     // Send the accept-proposal to the first proposing agent
                     ACLMessage acceptBidderProposal = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
                     acceptBidderProposal.addReceiver(proposingAgents.get(0));
-                    acceptBidderProposal.setConversationId(ConversationID);
+                    acceptBidderProposal.setConversationId(conversationID);
                     myAgent.send(acceptBidderProposal);
                     System.out.println(proposingAgents.get(0).getName() + " is the current best bidder");
 
@@ -162,7 +172,7 @@ public class AuctioneerAgent extends Agent {
                         if (proposingAgents.indexOf(agent) > 0)
                             rejectProposals.addReceiver(agent);
 
-                    rejectProposals.setConversationId(ConversationID);
+                    rejectProposals.setConversationId(conversationID);
                     myAgent.send(rejectProposals);
 
                     //clear the list, increase the price and restart from the cfp
@@ -190,10 +200,12 @@ public class AuctioneerAgent extends Agent {
         }
 
         public boolean done() {
-            if (step == 2 && bestBidder == null) {
-                System.out.println("Attempt failed: " + itemName + " not available for sale");
-            }
-            return ((step == 2 && bestBidder == null) || step == 4);
+//            if (step == 3 && bestBidder == null) {
+//                System.out.println("Attempt failed: " + itemName );
+//            }
+//            return ((step == 3 && bestBidder == null) || step == 4);
+//        }
+            return false;
         }
     }  // End of inner class RequestPerformer
 }
