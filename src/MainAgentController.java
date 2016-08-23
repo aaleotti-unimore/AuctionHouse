@@ -5,6 +5,7 @@ import jade.wrapper.AgentController;
 import jade.wrapper.ControllerException;
 import jade.wrapper.StaleProxyException;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 public class MainAgentController {
@@ -45,19 +46,21 @@ public class MainAgentController {
         args[1] = String.valueOf(rand.nextInt(90) + 10);
 
         controller2 = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", args);
-        AgentController[] controllers = new AgentController[10];
-        for (int i = 0; i < controllers.length; i++) {
-            controllers[i] = mainContainer.createNewAgent("bidder" + i, "BidderAgent", args);
-        }
-        for (AgentController cnt : controllers) {
-            cnt.start();
+        ArrayList<AgentController> controllers = new ArrayList<>(2);
+        for (int i = 0; i < 5; i++) {
+            controllers.add(mainContainer.createNewAgent("bidder" + i, "BidderAgent", args));
         }
 
         try {
-            Thread.sleep(2000);
+            for (AgentController agentController : controllers) {
+                agentController.start();
+            }
+
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
         controller2.start();
 
     }

@@ -103,26 +103,27 @@ public class BidderAgent extends Agent {
                         currentItemValue = Integer.valueOf(msg.getContent());
                         if (currentItemValue < myCash) {
                             reply.setPerformative(ACLMessage.PROPOSE);
-                            printMessage("I Propose");
+//                            printMessage(reply.toString());
                         } else {
                             reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+                            printMessage("i'm out. peace.");
                             doDelete();
                         }
                     }
 
-                    if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
-                        printMessage("I'm the best bidder!");
-                    }
+                    if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) printMessage("I'm the best bidder!");
+
+                    if (msg.getPerformative() == ACLMessage.REJECT_PROPOSAL) printMessage("I got rejected");
 
                     if (msg.getPerformative() == ACLMessage.REQUEST) {
                         currentItemValue = Integer.valueOf(msg.getContent());
-                        myCash = -currentItemValue;
+                        myCash = myCash - currentItemValue;
                         printMessage("Payed the item " + currentItemValue + " current wallet is: " + myCash);
                         doDelete();
                     }
                     myAgent.send(reply);
                 } catch (NumberFormatException e) {
-                    System.out.println("This is not a number");
+                    printMessage("This is not a number");
                     System.out.println(e.getMessage());
                 }
             }
