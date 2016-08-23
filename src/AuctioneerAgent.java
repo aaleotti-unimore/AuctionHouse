@@ -125,50 +125,61 @@ public class AuctioneerAgent extends Agent {
                     }
                     cfp.setContent(String.valueOf(currentItemPrice));
                     cfp.setConversationId(conversationID);
-                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value given he multiple CFP ongoing
+//                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value given he multiple CFP ongoing
 //                    cfp.setReplyByDate(new Date(System.currentTimeMillis() + 2000));
                     myAgent.send(cfp);
                     // Prepare the template to get proposals
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId(conversationID),
-                            MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+//                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId(conversationID),
+//                            MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
                     step = 2;
                     break;
                 case 2:
                     // Receive all proposals/not-understood from the participants
-
-                    ACLMessage reply = myAgent.receive();
-                    if (reply != null) {
-                        // Reply received fill array with current bidders
-                        if (reply.getPerformative() == ACLMessage.PROPOSE) {
-                            proposingAgents.add(reply.getSender());
-                            System.out.println(reply.getSender().getName() + " proposes");
+//                    while (repliesCnt <= participantAgents.size()) {
+                        ACLMessage reply = myAgent.receive();
+                        if (reply != null) {
+                            // Reply received fill array with current bidders
+                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                                proposingAgents.add(reply.getSender());
+                                System.out.println(reply.getSender().getName() + " proposes");
+                            }
+                            if (reply.getPerformative() == ACLMessage.NOT_UNDERSTOOD) {
+                                System.out.println(reply.getSender().getName() + " didn't understand");
+                            }
+                            repliesCnt++;
+//                            System.out.println("Replies Counter" + repliesCnt);
+                            if (repliesCnt >= participantAgents.size()) {
+                                // We received all replies
+//                                System.out.println("received from " + reply.getSender().getLocalName());
+                                if (proposingAgents.size() > 0) {
+                                    // We received at least one proposal
+                                    step = 3;
+                                } else {
+                                    //no new proposals
+                                    if (bestBidder != null)
+                                        step = 4;
+                                        //and no best bidder
+                                    else doDelete();
+                                }
+                            }
+                        } else {
+                            block();
                         }
-                        if (reply.getPerformative() == ACLMessage.NOT_UNDERSTOOD) {
-                            System.out.println(reply.getSender().getName() + " didn't understand");
-                        }
-                        repliesCnt++;
-                        if (repliesCnt >= participantAgents.size()) {
-                            // We received all replies
-                            System.out.println("receieved from"+ reply.getSender().getLocalName());
-                            step = 2;
-                        }
-                    } else {
-                        block();
-                    }
+//                    }
 
                     //wait until timeout
 //                    if (new Date(System.currentTimeMillis()).after(cfp.getReplyByDate()))
-                    if (proposingAgents.size() > 0) {
-                        // We received at least one proposal
-                        step = 3;
-                    } else {
-                        if (bestBidder == null) {
-                            //no bidders yet
-
-                        }
-                        //no new proposals
-                        step = 4;
-                    }
+//                    if (proposingAgents.size() > 0) {
+//                        // We received at least one proposal
+//                        step = 3;
+//                    } else {
+//                        if (bestBidder == null) {
+//                            //no bidders yet
+//
+//                        }
+//                        //no new proposals
+//                        step = 4;
+//                    }
 
                     break;
                 case 3:

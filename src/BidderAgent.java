@@ -97,7 +97,7 @@ public class BidderAgent extends Agent {
                     reply.setConversationId(conversationID);
 
                     //TODO GUARDACI DENTRO
-                    reply.setInReplyTo(msg.getReplyWith());
+//                    reply.setInReplyTo(msg.getReplyWith());
 
                     if (msg.getPerformative() == ACLMessage.CFP) {
                         currentItemValue = Integer.valueOf(msg.getContent());
@@ -120,6 +120,7 @@ public class BidderAgent extends Agent {
                         printMessage("Payed the item " + currentItemValue + " current wallet is: " + myCash);
                         doDelete();
                     }
+                    myAgent.send(reply);
                 } catch (NumberFormatException e) {
                     System.out.println("This is not a number");
                     System.out.println(e.getMessage());
