@@ -81,7 +81,7 @@ public class AuctioneerAgent extends Agent {
     // Put agent clean-up operations here
     protected void takeDown() {
         // Printout a dismissal message
-        System.out.println("Auctioneer-agent " + getAID().getName() + " terminating.");
+        printMessage(" terminating.");
     }
 
     private void printMessage(String msg) {
@@ -152,13 +152,20 @@ public class AuctioneerAgent extends Agent {
                         proposingAgents.forEach((a) -> System.out.print(a.getLocalName() + ", "));
                         System.out.println();
                         //new proposing agents
-                        if (proposingAgents.size() > 0) step = 3;
+                        if (proposingAgents.size() > 0) {
+                            bestBidder = proposingAgents.get(0);
+                            step = 3;
+                        }
                         //no new proposing agents and a previous best bidder has been chosen.
-                        if (proposingAgents.size() == 1 && bestBidder != null) step = 4;
+                        if (proposingAgents.size() <= 1 && bestBidder != null) step = 4;
+                        if (proposingAgents.isEmpty() && bestBidder==null){
+                            printMessage("No bidders");
+                            doDelete();
+                            MainAgentController.killInstance();
+                        }
                     }
                     break;
                 case 3:
-                    bestBidder = proposingAgents.get(0);
 
                     // Send the accept-proposal to the first proposing agent
                     ACLMessage acceptBidderProposal = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
@@ -176,8 +183,13 @@ public class AuctioneerAgent extends Agent {
                     proposingAgents = null;
                     proposingAgents = new ArrayList<>();
                     previousItemPrice = currentItemPrice;
-                    currentItemPrice += 10;
+                    currentItemPrice += currentItemPrice;
                     step = 1;
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     break;
                 case 4:
                     //inform everyone and request the winner

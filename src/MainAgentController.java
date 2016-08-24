@@ -73,15 +73,17 @@ public class MainAgentController {
     }
 
     public static void killInstance() {
-        try {
-            controller2.kill();
-            mainContainer.kill();
-            rt.shutDown();
-            instance = null;
-            System.exit(0);
-        }catch (StaleProxyException e){
-            e.printStackTrace();
-        }
+        new Thread(() -> {
+            try {
+                mainContainer.kill();
+                rt.shutDown();
+                instance = null;
+                System.exit(0);
+            } catch (StaleProxyException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
     }
 }
 
