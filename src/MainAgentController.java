@@ -6,65 +6,55 @@ import jade.wrapper.ControllerException;
 import jade.wrapper.StaleProxyException;
 
 import java.util.Random;
+import java.util.Scanner;
 
-public class MainAgentController {
+import static java.lang.Thread.sleep;
+
+class MainAgentController {
 
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
-    private static AgentController controller2;
-    private static AgentController[] controllers;
+    private static AgentController snifferController;
 
-    protected MainAgentController() throws ControllerException {
-
-
-//        // Get a hold on JADE runtime
-//        Runtime rt = Runtime.instance();
-//// Create a default profile
-//        Profile p = new ProfileImpl();
-//// Create a new non-main container, connecting to the default
-//// main container (i.e. on this host, port 1099)
-//        ContainerController cc = rt.createAgentContainer(p);
-//// Create a new agent, a DummyAgent
-//// and pass it a reference to an Object
-//        Object reference = new Object();
-//        Object argums[] = new Object[1];
-//        argums[0] = reference;
-//        AgentController dummy = cc.createNewAgent("inProcess", "jade.tools.DummyAgent.DummyAgent", argums);
-//// Fire up the agent
-//        dummy.start();
-
+    private MainAgentController() throws ControllerException, InterruptedException {
         rt = Runtime.instance();
 
         Profile profile = new ProfileImpl();
-//        profile.setParameter("gui", "true");
+        profile.setParameter("gui", "true");
 
         mainContainer = rt.createMainContainer(profile);
-        Object[] args = new String[2];
-        args[0] = "Fender Stratocaster";
+        Object[] snifferArgs = new Object[1];
+        snifferArgs[0] = "Auctioneer;bidder0;bidder1;bidder2";
+        Object[] biddersArgs = new Object[0];
+        Object[] auctioneerArgs = new String[2];
+        auctioneerArgs[0] = "1968 Fender Stratocaster";
         Random rand = new Random();
-        args[1] = String.valueOf(rand.nextInt(50) + 10);
+        auctioneerArgs[1] = String.valueOf(rand.nextInt(50) + 10);
 
-        controller2 = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", args);
-        controllers = new AgentController[3];
-        for (int i = 0; i < controllers.length; i++) {
-            controllers[i] = mainContainer.createNewAgent("bidder" + i, "BidderAgent", args);
+        snifferController = mainContainer.createNewAgent("Sniffer", "jade.tools.sniffer.Sniffer", snifferArgs);
+        snifferController.start();
+        Thread.sleep(500);
+        AgentController auctioneerController = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", auctioneerArgs);
+        AgentController[] biddersController = new AgentController[3];
+        for (int i = 0; i < biddersController.length; i++) {
+            biddersController[i] = mainContainer.createNewAgent("bidder" + i, "BidderAgent", biddersArgs);
         }
 
-        for (AgentController cnt : controllers) {
+        for (AgentController cnt : biddersController) {
             cnt.start();
         }
 
         try {
-            Thread.sleep(2000);
+            sleep(2000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        controller2.start();
+        auctioneerController.start();
 
     }
 
-    public static MainAgentController getInstance() throws ControllerException {
+    public static MainAgentController getInstance() throws ControllerException, InterruptedException {
         if (instance == null) {
             instance = new MainAgentController();
         }
@@ -72,9 +62,12 @@ public class MainAgentController {
         return instance;
     }
 
-    public static void killInstance() {
+    static void killInstance() {
         new Thread(() -> {
             try {
+                Scanner scanner = new Scanner(System.in);
+                scanner.nextLine();
+                snifferController.kill();
                 mainContainer.kill();
                 rt.shutDown();
                 instance = null;
@@ -86,28 +79,3 @@ public class MainAgentController {
 
     }
 }
-
-/**
- * >         // This is the important method. This launches the jade platform.
- * >         Runtime rt = Runtime.instance();
- * >
- * >         Profile profile = new ProfileImpl();
- * >
- * >         // With the Profile you can set some options for the container
- * >         profile.setParameter(Profile.PLATFORM_ID, "Platform Name");
- * >         profile.setParameter(Profile.CONTAINER_NAME, "Container Name");
- * >
- * >         // Create the Main Container
- * >         AgentContainer mainContainer = rt.createMainContainer(profile);
- * >
- * >         try {
- * >                 // Here I create an agent in the main container and start
- * > it.
- * >             AgentController ac = mainContainer.createNewAgent("manager",
- * >                     "ia.main.AgentManager", params);
- * >             ac.start();
- * >         } catch(StaleProxyException e) {
- * >             e.printStackTrace();
- * >         }
- * >     }
- */
