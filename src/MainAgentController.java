@@ -12,7 +12,8 @@ public class MainAgentController {
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
-    private static AgentController controller, controller2;
+    private static AgentController controller2;
+    private static AgentController[] controllers;
 
     protected MainAgentController() throws ControllerException {
 
@@ -36,19 +37,20 @@ public class MainAgentController {
         rt = Runtime.instance();
 
         Profile profile = new ProfileImpl();
-//        profile.setParameter("gui", "true");
+        profile.setParameter("gui", "true");
 
         mainContainer = rt.createMainContainer(profile);
         Object[] args = new String[2];
-        args[0] = "Fender Stratocaster 1966";
+        args[0] = "Fender Stratocaster";
         Random rand = new Random();
-        args[1] = String.valueOf(rand.nextInt(90) + 10);
+        args[1] = String.valueOf(rand.nextInt(50) + 10);
 
         controller2 = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", args);
-        AgentController[] controllers = new AgentController[10];
+        controllers = new AgentController[3];
         for (int i = 0; i < controllers.length; i++) {
             controllers[i] = mainContainer.createNewAgent("bidder" + i, "BidderAgent", args);
         }
+
         for (AgentController cnt : controllers) {
             cnt.start();
         }
@@ -70,12 +72,16 @@ public class MainAgentController {
         return instance;
     }
 
-    public static void killInstance() throws StaleProxyException {
-        controller.kill();
-        controller2.kill();
-        mainContainer.kill();
-        rt.shutDown();
-        instance = null;
+    public static void killInstance() {
+        try {
+            controller2.kill();
+            mainContainer.kill();
+            rt.shutDown();
+            instance = null;
+            System.exit(0);
+        }catch (StaleProxyException e){
+            e.printStackTrace();
+        }
     }
 }
 

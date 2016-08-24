@@ -21,25 +21,25 @@ public class AuctioneerAgent extends Agent {
 
     // The list of known seller agents
     private List<AID> participantAgents;
+    private int previousItemPrice;
 
     /**
      * agent initializations
      */
     protected void setup() {
         // Printout a welcome message
-        System.out.println(" Auctioneer " + getAID().getName() + " is ready.");
+        printMessage(" is ready.");
 
         // Get the title of the Bidding item to Sell as a start-up argument and its initial price
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
             itemName = (String) args[0];
             itemStartingPrice = Integer.valueOf((String) args[1]);
-            System.out.println("Target item is " + itemName + " and the starting price is " + itemStartingPrice);
+            printMessage("Target item is " + itemName + " and the starting price is " + itemStartingPrice);
 
             addBehaviour(new OneShotBehaviour(this) {
                 @Override
                 public void action() {
-                    System.out.println("Trying to sell " + itemName);
                     // Update the list of bidding agents
                     DFAgentDescription template = new DFAgentDescription();
                     ServiceDescription sd = new ServiceDescription();
@@ -63,7 +63,7 @@ public class AuctioneerAgent extends Agent {
                     }
 
                     // Perform the request
-                    myAgent.addBehaviour(new RequestPerformer());
+                    myAgent.addBehaviour(new AuctionPerformer());
                 }
             });
         } else {
@@ -84,14 +84,15 @@ public class AuctioneerAgent extends Agent {
         System.out.println("Auctioneer-agent " + getAID().getName() + " terminating.");
     }
 
+    private void printMessage(String msg) {
+        System.out.println(getAID().getLocalName() + ": " + msg);
+    }
+
     /**
-     * Inner class RequestPerformer.
-     * This is the behaviour used by Book-buyer agents to request seller
-     * agents the target item.
+     * Inner class. Performs the Auction Behaviour
      */
-    private class RequestPerformer extends Behaviour {
-        private AID bestBidder; // The agent who provides the best offer
-        private MessageTemplate mt; // The template to receive replies
+    private class AuctionPerformer extends Behaviour {
+        private AID bestBidder = null; // The agent who provides the best offer
         private int step = 0;
         int repliesCnt = 0;
         private String conversationID = "Auction-for-" + itemName + System.currentTimeMillis();
@@ -103,84 +104,58 @@ public class AuctioneerAgent extends Agent {
             switch (step) {
                 case 0:
                     // send Inform to all participants
-
                     ACLMessage inform = new ACLMessage(ACLMessage.INFORM);
-                    for (AID participant : participantAgents) {
-                        inform.addReceiver(participant);
-                    }
+                    participantAgents.forEach(inform::addReceiver);
                     inform.setContent(conversationID);
                     inform.setConversationId(conversationID);
                     myAgent.send(inform);
-//                    proposingAgents = participantAgents;
                     step = 1;
                     break;
                 case 1:
                     repliesCnt = 0;
 
                     // Send cfp to all participants
-                    System.out.println(myAgent.getName() + " call for " + itemName + "at price: " + currentItemPrice);
+                    printMessage(" call for " + itemName + " at price: " + currentItemPrice);
                     cfp = new ACLMessage(ACLMessage.CFP);
-                    for (AID bidder : participantAgents) {
-                        cfp.addReceiver(bidder);
-                    }
+                    participantAgents.forEach(cfp::addReceiver);
                     cfp.setContent(String.valueOf(currentItemPrice));
                     cfp.setConversationId(conversationID);
-//                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value given he multiple CFP ongoing
-//                    cfp.setReplyByDate(new Date(System.currentTimeMillis() + 2000));
+                    cfp.setReplyWith("cfp" + System.currentTimeMillis());
                     myAgent.send(cfp);
-                    // Prepare the template to get proposals
-//                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId(conversationID),
-//                            MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
                     step = 2;
                     break;
                 case 2:
                     // Receive all proposals/not-understood from the participants
-//                    while (repliesCnt <= participantAgents.size()) {
-                        ACLMessage reply = myAgent.receive();
-                        if (reply != null) {
-                            // Reply received fill array with current bidders
-                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
-                                proposingAgents.add(reply.getSender());
-                                System.out.println(reply.getSender().getName() + " proposes");
-                            }
-                            if (reply.getPerformative() == ACLMessage.NOT_UNDERSTOOD) {
-                                System.out.println(reply.getSender().getName() + " didn't understand");
-                            }
-                            repliesCnt++;
-//                            System.out.println("Replies Counter" + repliesCnt);
-                            if (repliesCnt >= participantAgents.size()) {
-                                // We received all replies
-//                                System.out.println("received from " + reply.getSender().getLocalName());
-                                if (proposingAgents.size() > 0) {
-                                    // We received at least one proposal
-                                    step = 3;
-                                } else {
-                                    //no new proposals
-                                    if (bestBidder != null)
-                                        step = 4;
-                                        //and no best bidder
-                                    else doDelete();
-                                }
-                            }
-                        } else {
-                            block();
+                    MessageTemplate template = MessageTemplate.and(
+                            MessageTemplate.or(MessageTemplate.MatchPerformative(ACLMessage.PROPOSE), MessageTemplate.MatchPerformative(ACLMessage.NOT_UNDERSTOOD)),
+                            MessageTemplate.and(MessageTemplate.MatchConversationId(cfp.getConversationId()), MessageTemplate.MatchInReplyTo(cfp.getReplyWith())));
+                    ACLMessage reply = myAgent.receive(template);
+                    if (reply != null) {
+                        // Reply received fill array with current bidders
+                        if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                            proposingAgents.add(reply.getSender());
                         }
-//                    }
-
-                    //wait until timeout
-//                    if (new Date(System.currentTimeMillis()).after(cfp.getReplyByDate()))
-//                    if (proposingAgents.size() > 0) {
-//                        // We received at least one proposal
-//                        step = 3;
-//                    } else {
-//                        if (bestBidder == null) {
-//                            //no bidders yet
-//
-//                        }
-//                        //no new proposals
-//                        step = 4;
-//                    }
-
+//                        if (reply.getPerformative() == ACLMessage.NOT_UNDERSTOOD)
+                        repliesCnt++;
+                    } else {
+                        block();
+                    }
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if (repliesCnt >= participantAgents.size()) {
+                        printMessage("received replies: " + repliesCnt);
+                        // We received all replies
+                        System.out.print("Proposing Agents: " + proposingAgents.size() + " List: ");
+                        proposingAgents.forEach((a) -> System.out.print(a.getLocalName() + ", "));
+                        System.out.println();
+                        //new proposing agents
+                        if (proposingAgents.size() > 0) step = 3;
+                        //no new proposing agents and a previous best bidder has been chosen.
+                        if (proposingAgents.size() == 1 && bestBidder != null) step = 4;
+                    }
                     break;
                 case 3:
                     bestBidder = proposingAgents.get(0);
@@ -190,47 +165,53 @@ public class AuctioneerAgent extends Agent {
                     acceptBidderProposal.addReceiver(proposingAgents.get(0));
                     acceptBidderProposal.setConversationId(conversationID);
                     myAgent.send(acceptBidderProposal);
-                    System.out.println(proposingAgents.get(0).getName() + " is the current best bidder");
-
+//                    printMessage(bestBidder.getLocalName() + " is the current best bidder");
+                    proposingAgents.remove(0);
                     ACLMessage rejectProposals = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
-                    for (AID agent : proposingAgents)
-                        if (proposingAgents.indexOf(agent) > 0)
-                            rejectProposals.addReceiver(agent);
-
                     rejectProposals.setConversationId(conversationID);
+                    proposingAgents.forEach(rejectProposals::addReceiver);
                     myAgent.send(rejectProposals);
 
                     //clear the list, increase the price and restart from the cfp
                     proposingAgents = null;
                     proposingAgents = new ArrayList<>();
+                    previousItemPrice = currentItemPrice;
                     currentItemPrice += 10;
                     step = 1;
                     break;
                 case 4:
                     //inform everyone and request the winner
                     ACLMessage inform2 = new ACLMessage(ACLMessage.INFORM);
-                    inform2.setContent("Auction won by " + bestBidder.getName());
-                    System.out.println("Auction won by " + bestBidder.getName());
-                    for (AID participant : participantAgents)
-                        inform2.addReceiver(participant);
+                    inform2.setConversationId("winner");
+                    inform2.setContent(bestBidder.getLocalName());
+                    participantAgents.remove(bestBidder);
+                    participantAgents.forEach(inform2::addReceiver);
                     myAgent.send(inform2);
 
                     //request the winner to pay
                     ACLMessage requestWinner = new ACLMessage(ACLMessage.REQUEST);
-                    requestWinner.setContent(Integer.toString(currentItemPrice));
+                    requestWinner.setContent(Integer.toString(previousItemPrice));
+                    requestWinner.setConversationId(conversationID);
                     requestWinner.addReceiver(bestBidder);
                     myAgent.send(requestWinner);
+
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    terminated = true;
+
+                    doDelete();
+                    MainAgentController.killInstance();
+
+
                     break;
             }
         }
 
         public boolean done() {
-//            if (step == 3 && bestBidder == null) {
-//                System.out.println("Attempt failed: " + itemName );
-//            }
-//            return ((step == 3 && bestBidder == null) || step == 4);
-//        }
-            return false;
+            return terminated;
         }
-    }  // End of inner class RequestPerformer
+    }  // End of inner class AuctionPerformer
 }

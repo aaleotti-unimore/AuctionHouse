@@ -90,37 +90,38 @@ public class BidderAgent extends Agent {
             ACLMessage msg = myAgent.receive();
             if (msg != null) {
                 try {
-
-
                     conversationID = msg.getConversationId();
-                    ACLMessage reply = msg.createReply();
-                    reply.setConversationId(conversationID);
 
-                    //TODO GUARDACI DENTRO
-//                    reply.setInReplyTo(msg.getReplyWith());
 
                     if (msg.getPerformative() == ACLMessage.CFP) {
+                        ACLMessage reply = msg.createReply();
+                        reply.setConversationId(conversationID);
                         currentItemValue = Integer.valueOf(msg.getContent());
-                        if (currentItemValue < myCash) {
+                        if (currentItemValue <= myCash) {
+                            printMessage("Proposing. Offer is " + currentItemValue + " wallet is " + myCash + " Remaining cash: " + (myCash - currentItemValue));
                             reply.setPerformative(ACLMessage.PROPOSE);
-                            printMessage("I Propose");
                         } else {
                             reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-                            doDelete();
                         }
+                        myAgent.send(reply);
                     }
 
-                    if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+                    if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL){
                         printMessage("I'm the best bidder!");
+                    }
+
+                    if (msg.getPerformative() == ACLMessage.INFORM && conversationID.equals("winner")) {
+                        printMessage("Received winner's name: " + msg.getContent());
+                        doDelete();
                     }
 
                     if (msg.getPerformative() == ACLMessage.REQUEST) {
                         currentItemValue = Integer.valueOf(msg.getContent());
-                        myCash = -currentItemValue;
+                        myCash -= currentItemValue;
                         printMessage("Payed the item " + currentItemValue + " current wallet is: " + myCash);
+                        terminated = true;
                         doDelete();
                     }
-                    myAgent.send(reply);
                 } catch (NumberFormatException e) {
                     System.out.println("This is not a number");
                     System.out.println(e.getMessage());
