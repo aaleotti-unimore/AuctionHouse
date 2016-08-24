@@ -205,7 +205,6 @@ public class AuctioneerAgent extends Agent {
                     doDelete();
                     MainAgentController.killInstance();
 
-
                     break;
             }
         }

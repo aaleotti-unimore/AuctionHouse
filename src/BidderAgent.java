@@ -115,6 +115,7 @@ public class BidderAgent extends Agent {
                         doDelete();
                     }
 
+
                     if (msg.getPerformative() == ACLMessage.REQUEST) {
                         currentItemValue = Integer.valueOf(msg.getContent());
                         myCash -= currentItemValue;
