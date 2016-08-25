@@ -1,3 +1,6 @@
+package dutch;
+
+import base.MainAgentController;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
@@ -12,11 +15,12 @@ import jade.lang.acl.MessageTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
-//@SuppressWarnings({ "unchecked", "rawtypes"})
-public class AuctioneerAgent extends Agent {
+@SuppressWarnings({"unchecked", "rawtypes", "unused"})
+public class DutchAuctioneerAgent extends Agent {
     // The title and price of the item to sell
     private String itemName;
-    private Integer itemStartingPrice;
+    private int itemStartingPrice;
+    private int reservePrice;
     private Boolean terminated = false;
 
     // The list of known seller agents
@@ -34,7 +38,9 @@ public class AuctioneerAgent extends Agent {
         if (args != null && args.length > 0) {
             itemName = (String) args[0];
             itemStartingPrice = Integer.valueOf((String) args[1]);
-            printMessage("Target item is " + itemName + " and the starting price is " + itemStartingPrice);
+            //Reserve price is fixed at 30% of initial price
+            reservePrice = itemStartingPrice * 3 / 10;
+            printMessage("Target item is " + itemName + " and the starting price is " + itemStartingPrice + " Reserve price is: " + reservePrice);
 
             addBehaviour(new OneShotBehaviour(this) {
                 @Override
@@ -55,7 +61,7 @@ public class AuctioneerAgent extends Agent {
                         if (result.length == 0) {
                             System.out.println("found no bidders. exiting");
                             terminated = true;
-//                            doDelete();
+                            doDelete();
                         }
                     } catch (FIPAException fe) {
                         fe.printStackTrace();
@@ -68,7 +74,7 @@ public class AuctioneerAgent extends Agent {
         } else {
             // Make the agent terminate
             System.out.println("Bad Arguments");
-//            doDelete();
+            doDelete();
         }
 
     }
@@ -91,7 +97,7 @@ public class AuctioneerAgent extends Agent {
      * Inner class. Performs the Auction Behaviour
      */
     private class AuctionPerformer extends Behaviour {
-        private AID bestBidder = null; // The agent who provides the best offer
+        private AID bestBidder = null; // The agent who provides the first offer
         private int step = 0;
         int repliesCnt = 0;
         private String conversationID = "Auction-for-" + itemName + System.currentTimeMillis();
@@ -135,7 +141,6 @@ public class AuctioneerAgent extends Agent {
                         if (reply.getPerformative() == ACLMessage.PROPOSE) {
                             proposingAgents.add(reply.getSender());
                         }
-//                        if (reply.getPerformative() == ACLMessage.NOT_UNDERSTOOD)
                         repliesCnt++;
                     } else {
                         block();
@@ -155,14 +160,29 @@ public class AuctioneerAgent extends Agent {
                         if (proposingAgents.size() > 0) {
                             bestBidder = proposingAgents.get(0);
                             step = 3;
+                        } else {
+                            //clear the list, increase the price and restart from the cfp
+                            proposingAgents = null;
+                            proposingAgents = new ArrayList<>();
+                            currentItemPrice -= 10;
+                            if (currentItemPrice < reservePrice) {
+                                printMessage("Reserve price reached. No winning bidders. Terminating");
+                                terminated = true;
+                                MainAgentController.killInstance();
+                            }
+                            step = 1;
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                         }
-                        //no new proposing agents and a previous best bidder has been chosen.
-                        if (proposingAgents.size() <= 1 && bestBidder != null) step = 4;
-                        if (proposingAgents.isEmpty() && bestBidder==null){
-                            printMessage("No bidders");
-//                            doDelete();
-                            MainAgentController.killInstance();
-                        }
+//                        //no new proposing agents and a previous best bidder has been chosen.
+//                        if (proposingAgents.size() >=0 && bestBidder != null) step = 4;
+//                        if (proposingAgents.isEmpty() && bestBidder == null) {
+//                            printMessage("No bidders");
+////
+//                        }
                     }
                     break;
                 case 3:
@@ -172,40 +192,26 @@ public class AuctioneerAgent extends Agent {
                     acceptBidderProposal.addReceiver(proposingAgents.get(0));
                     acceptBidderProposal.setConversationId(conversationID);
                     myAgent.send(acceptBidderProposal);
-//                    printMessage(bestBidder.getLocalName() + " is the current best bidder");
                     proposingAgents.remove(0);
                     ACLMessage rejectProposals = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
                     rejectProposals.setConversationId(conversationID);
                     proposingAgents.forEach(rejectProposals::addReceiver);
                     myAgent.send(rejectProposals);
 
-                    //clear the list, increase the price and restart from the cfp
-                    proposingAgents = null;
-                    proposingAgents = new ArrayList<>();
-                    previousItemPrice = currentItemPrice;
-                    currentItemPrice += 10;
-                    step = 1;
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                case 4:
-                    //inform everyone and request the winner
+
+                    //inform everyone
                     ACLMessage inform2 = new ACLMessage(ACLMessage.INFORM);
                     inform2.setConversationId("winner");
                     inform2.setContent(bestBidder.getLocalName());
-                    participantAgents.remove(bestBidder);
                     participantAgents.forEach(inform2::addReceiver);
                     myAgent.send(inform2);
 
                     //request the winner to pay
-                    ACLMessage requestWinner = new ACLMessage(ACLMessage.REQUEST);
-                    requestWinner.setContent(Integer.toString(previousItemPrice));
-                    requestWinner.setConversationId(conversationID);
-                    requestWinner.addReceiver(bestBidder);
-                    myAgent.send(requestWinner);
+//                    ACLMessage requestWinner = new ACLMessage(ACLMessage.REQUEST);
+//                    requestWinner.setContent(Integer.toString(previousItemPrice));
+//                    requestWinner.setConversationId(conversationID);
+//                    requestWinner.addReceiver(bestBidder);
+//                    myAgent.send(requestWinner);
 
                     try {
                         Thread.sleep(2000);

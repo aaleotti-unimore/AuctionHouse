@@ -1,3 +1,5 @@
+package base;
+
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
@@ -11,21 +13,20 @@ import java.util.Scanner;
 
 import static java.lang.Thread.sleep;
 
-class MainAgentController {
+public class MainAgentController {
 
     private static final int N_BIDDERS = 3;
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
     private static AgentController snifferController;
-    private static AgentController auctioneerController;
     private static ArrayList<AgentController> biddersController;
 
     private MainAgentController() throws ControllerException, InterruptedException {
         rt = Runtime.instance();
 
         Profile profile = new ProfileImpl();
-        profile.setParameter("gui", "true");
+//        profile.setParameter("gui", "true");
 
         mainContainer = rt.createMainContainer(profile);
         Object[] snifferArgs = new Object[1];
@@ -37,12 +38,28 @@ class MainAgentController {
         auctioneerArgs[1] = String.valueOf(rand.nextInt(50) + 10);
 
         snifferController = mainContainer.createNewAgent("Sniffer", "jade.tools.sniffer.Sniffer", snifferArgs);
+
+
+        System.out.println("Choose which Auction: English (E) / Dutch (D)");
+        Scanner scanner = new Scanner(System.in);
+        char c = scanner.next().charAt(0);
+        AgentController auctioneerController = null;
+        if ( c == 'E' || c == 'e') {
+            auctioneerArgs[1] = String.valueOf(rand.nextInt(50) + 10);
+            auctioneerController = mainContainer.createNewAgent("Auctioneer", "english.EnglishAuctioneerAgent", auctioneerArgs);
+        } else if( c == 'D' || c == 'd')  {
+            auctioneerArgs[1] = String.valueOf(100 - rand.nextInt(50));
+            auctioneerController = mainContainer.createNewAgent("Auctioneer", "dutch.DutchAuctioneerAgent", auctioneerArgs);
+        } else{
+            System.out.println("Not valid option");
+            System.exit(1);
+        }
+
         snifferController.start();
         sleep(2000);
-        auctioneerController = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", auctioneerArgs);
         biddersController = new ArrayList<>(3);
-        for (int i = 0; i < N_BIDDERS ; i++)
-            biddersController.add(mainContainer.createNewAgent("bidder" + i, "BidderAgent", biddersArgs));
+        for (int i = 0; i < N_BIDDERS; i++)
+            biddersController.add(mainContainer.createNewAgent("bidder" + i, "base.BidderAgent", biddersArgs));
 
         for (AgentController agentController : biddersController) agentController.start();
 
@@ -59,7 +76,7 @@ class MainAgentController {
         return instance;
     }
 
-    static void killInstance() {
+    public static void killInstance() {
         new Thread(() -> {
             try {
                 System.out.println("Press enter to terminate");

@@ -1,3 +1,5 @@
+package base;
+
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.domain.DFService;
@@ -8,6 +10,7 @@ import jade.lang.acl.ACLMessage;
 
 import java.util.Random;
 
+@SuppressWarnings({ "unchecked", "rawtypes", "unused"})
 public class BidderAgent extends Agent {
     private int myCash;
     private Boolean terminated = false;
