@@ -5,6 +5,7 @@ import jade.wrapper.AgentController;
 import jade.wrapper.ControllerException;
 import jade.wrapper.StaleProxyException;
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -12,10 +13,13 @@ import static java.lang.Thread.sleep;
 
 class MainAgentController {
 
+    private static final int N_BIDDERS = 3;
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
     private static AgentController snifferController;
+    private static AgentController auctioneerController;
+    private static ArrayList<AgentController> biddersController;
 
     private MainAgentController() throws ControllerException, InterruptedException {
         rt = Runtime.instance();
@@ -34,22 +38,15 @@ class MainAgentController {
 
         snifferController = mainContainer.createNewAgent("Sniffer", "jade.tools.sniffer.Sniffer", snifferArgs);
         snifferController.start();
-        Thread.sleep(500);
-        AgentController auctioneerController = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", auctioneerArgs);
-        AgentController[] biddersController = new AgentController[3];
-        for (int i = 0; i < biddersController.length; i++) {
-            biddersController[i] = mainContainer.createNewAgent("bidder" + i, "BidderAgent", biddersArgs);
-        }
+        sleep(2000);
+        auctioneerController = mainContainer.createNewAgent("Auctioneer", "AuctioneerAgent", auctioneerArgs);
+        biddersController = new ArrayList<>(3);
+        for (int i = 0; i < N_BIDDERS ; i++)
+            biddersController.add(mainContainer.createNewAgent("bidder" + i, "BidderAgent", biddersArgs));
 
-        for (AgentController cnt : biddersController) {
-            cnt.start();
-        }
+        for (AgentController agentController : biddersController) agentController.start();
 
-        try {
-            sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        sleep(500);
         auctioneerController.start();
 
     }
@@ -65,9 +62,13 @@ class MainAgentController {
     static void killInstance() {
         new Thread(() -> {
             try {
+                System.out.println("Press enter to terminate");
                 Scanner scanner = new Scanner(System.in);
                 scanner.nextLine();
                 snifferController.kill();
+
+                for (AgentController agentController : biddersController) agentController.kill();
+
                 mainContainer.kill();
                 rt.shutDown();
                 instance = null;

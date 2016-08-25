@@ -21,7 +21,6 @@ public class AuctioneerAgent extends Agent {
 
     // The list of known seller agents
     private List<AID> participantAgents;
-    private int previousItemPrice;
 
     /**
      * agent initializations
@@ -56,7 +55,7 @@ public class AuctioneerAgent extends Agent {
                         if (result.length == 0) {
                             System.out.println("found no bidders. exiting");
                             terminated = true;
-                            doDelete();
+//                            doDelete();
                         }
                     } catch (FIPAException fe) {
                         fe.printStackTrace();
@@ -69,7 +68,7 @@ public class AuctioneerAgent extends Agent {
         } else {
             // Make the agent terminate
             System.out.println("Bad Arguments");
-            doDelete();
+//            doDelete();
         }
 
     }
@@ -98,6 +97,7 @@ public class AuctioneerAgent extends Agent {
         private String conversationID = "Auction-for-" + itemName + System.currentTimeMillis();
         private ACLMessage cfp;
         private int currentItemPrice = itemStartingPrice;
+        private int previousItemPrice = itemStartingPrice;
         private List<AID> proposingAgents = new ArrayList<>();
 
         public void action() {
@@ -160,7 +160,7 @@ public class AuctioneerAgent extends Agent {
                         if (proposingAgents.size() <= 1 && bestBidder != null) step = 4;
                         if (proposingAgents.isEmpty() && bestBidder==null){
                             printMessage("No bidders");
-                            doDelete();
+//                            doDelete();
                             MainAgentController.killInstance();
                         }
                     }
@@ -183,7 +183,7 @@ public class AuctioneerAgent extends Agent {
                     proposingAgents = null;
                     proposingAgents = new ArrayList<>();
                     previousItemPrice = currentItemPrice;
-                    currentItemPrice += currentItemPrice;
+                    currentItemPrice += 10;
                     step = 1;
                     try {
                         Thread.sleep(500);
@@ -214,7 +214,7 @@ public class AuctioneerAgent extends Agent {
                     }
                     terminated = true;
 
-                    doDelete();
+//                    doDelete();
                     MainAgentController.killInstance();
 
                     break;
