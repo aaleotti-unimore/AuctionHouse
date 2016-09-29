@@ -15,7 +15,7 @@ import static java.lang.Thread.sleep;
 
 public class MainAgentController {
 
-    private static final int N_BIDDERS = 3;
+    private static final int N_BIDDERS = 5;
     private static MainAgentController instance = null;
     private static jade.core.Runtime rt;
     private static jade.wrapper.AgentContainer mainContainer;
@@ -30,7 +30,11 @@ public class MainAgentController {
 
         mainContainer = rt.createMainContainer(profile);
         Object[] snifferArgs = new Object[1];
-        snifferArgs[0] = "Auctioneer;bidder0;bidder1;bidder2";
+        String args = "Auctioneer";
+        for (int i = 0; i < N_BIDDERS; i++) {
+            args += ";bidder" + i;
+        }
+        snifferArgs[0] = args;
         Object[] biddersArgs = new Object[0];
         Object[] auctioneerArgs = new String[2];
         auctioneerArgs[0] = "1968 Fender Stratocaster";
@@ -44,13 +48,13 @@ public class MainAgentController {
         Scanner scanner = new Scanner(System.in);
         char c = scanner.next().charAt(0);
         AgentController auctioneerController = null;
-        if ( c == 'E' || c == 'e') {
+        if (c == 'E' || c == 'e') {
             auctioneerArgs[1] = String.valueOf(rand.nextInt(50) + 10);
             auctioneerController = mainContainer.createNewAgent("Auctioneer", "english.EnglishAuctioneerAgent", auctioneerArgs);
-        } else if( c == 'D' || c == 'd')  {
+        } else if (c == 'D' || c == 'd') {
             auctioneerArgs[1] = String.valueOf(100 - rand.nextInt(50));
             auctioneerController = mainContainer.createNewAgent("Auctioneer", "dutch.DutchAuctioneerAgent", auctioneerArgs);
-        } else{
+        } else {
             System.out.println("Not valid option");
             System.exit(1);
         }
